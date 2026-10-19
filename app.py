@@ -10,6 +10,20 @@ WORKSPACE = BASE_DIR
 VENV_BIN = BASE_DIR / ".venv" / "bin"
 
 
+def resolve_safe_path(raw_path: str) -> Path:
+    candidate = raw_path.strip()
+    if not candidate:
+        raise ValueError("Missing path.")
+
+    root = WORKSPACE.resolve()
+    target = (WORKSPACE / candidate).resolve()
+    try:
+        target.relative_to(root)
+    except ValueError as exc:
+        raise ValueError("Invalid path.") from exc
+    return target
+
+
 def build_env():
     env = os.environ.copy()
     env["TERM"] = "xterm-256color"
@@ -65,38 +79,52 @@ def api_command():
     return jsonify(result)
 
 
-@app.route("/api/save", methods=["POST"])
-def api_save():
-    payload = request.get_json(silent=True) or {}
-    file_path = str(payload.get("path", "workspace/app.py")).strip()
-    content = payload.get("content", "")
-
-    if not file_path:
-        return jsonify({"ok": False, "error": "Missing file path."})
-
-    safe_root = str(WORKSPACE.resolve())
-    target = (WORKSPACE / file_path).resolve()
-    try:
-        target.relative_to(safe_root)
-    except ValueError:
-        return jsonify({"ok": False, "error": "Invalid file path."})
-
-    target.parent.mkdir(parents=True, exist_ok=True)
-    target.write_text(content, encoding="utf-8")
-    return jsonify({"ok": True, "path": file_path})
-
-
 @app.route("/api/files")
 def api_files():
     items = []
     for p in sorted(WORKSPACE.iterdir()):
         if p.name.startswith(".") and p.name not in [".venv"]:
             continue
-        items.append({
-            "name": p.name,
-            "type": "directory" if p.is_dir() else "file",
-        })
+        if p.is_dir():
+            items.append({"name": p.name, "type": "directory", "path": p.relative_to(WORKSPACE).as_posix()})
+        else:
+            items.append({"name": p.name, "type": "file", "path": p.relative_to(WORKSPACE).as_posix()})
     return jsonify({"items": items})
+
+
+@app.route("/api/read", methods=["POST"]) 
+def api_read():
+    payload = request.get_json(silent=True) or {}
+    rel_path = str(payload.get("path", "app.py")).strip()
+    try:
+        target = resolve_safe_path(rel_path)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Invalid file path."})
+
+    if not target.exists() or not target.is_file():
+        return jsonify({"ok": False, "error": "File not found."})
+
+    return jsonify({
+        "ok": True,
+        "path": target.relative_to(WORKSPACE).as_posix(),
+        "content": target.read_text(encoding="utf-8"),
+    })
+
+
+@app.route("/api/save", methods=["POST"]) 
+def api_save():
+    payload = request.get_json(silent=True) or {}
+    rel_path = str(payload.get("path", "app.py")).strip()
+    content = payload.get("content", "")
+
+    try:
+        target = resolve_safe_path(rel_path)
+    except ValueError:
+        return jsonify({"ok": False, "error": "Invalid file path."})
+
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(content, encoding="utf-8")
+    return jsonify({"ok": True, "path": target.relative_to(WORKSPACE).as_posix()})
 
 
 if __name__ == "__main__":

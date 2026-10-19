@@ -3,9 +3,11 @@ const commandInput = document.getElementById("commandInput");
 const editor = document.getElementById("editor");
 const statusText = document.getElementById("statusText");
 const fileList = document.getElementById("fileList");
+const activeFileLabel = document.getElementById("activeFileLabel");
 
 const history = [];
 let historyIndex = -1;
+let activeFile = "app.py";
 
 function appendLine(text, className = "output") {
   const div = document.createElement("div");
@@ -19,6 +21,14 @@ function setStatus(text) {
   statusText.textContent = text;
 }
 
+function setActiveFile(path) {
+  activeFile = path;
+  activeFileLabel.textContent = path;
+  Array.from(fileList.children).forEach((item) => {
+    item.classList.toggle("active", item.dataset.path === path);
+  });
+}
+
 function printIntro() {
   appendLine("Welcome to the Kali-style local terminal.", "output");
   appendLine("Type 'help' to view available commands.", "output");
@@ -27,16 +37,38 @@ function printIntro() {
 
 function refreshFileList() {
   fetch("/api/files")
-    .then(res => res.json())
-    .then(data => {
+    .then((res) => res.json())
+    .then((data) => {
       fileList.innerHTML = "";
       for (const item of data.items || []) {
         const row = document.createElement("div");
-        row.className = "file-item";
+        row.className = "file-item" + (item.path === activeFile ? " active" : "");
+        row.dataset.path = item.path;
         row.innerHTML = `
           <div class="file-name">${item.name}</div>
           <div class="file-kind">${item.type}</div>
         `;
+        row.addEventListener("click", () => {
+          const path = item.path;
+          setActiveFile(path);
+          fetch("/api/read", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ path })
+          })
+            .then((response) => response.json())
+            .then((payload) => {
+              if (payload.ok) {
+                editor.value = payload.content;
+                setStatus("Loaded: " + payload.path);
+              } else {
+                appendLine("Failed to open file: " + payload.error, "error");
+              }
+            })
+            .catch((error) => {
+              appendLine("Read error: " + error, "error");
+            });
+        });
         fileList.appendChild(row);
       }
     })
@@ -57,20 +89,59 @@ function runCommand(command) {
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ command })
   })
-  .then(res => res.json())
-  .then(data => {
-    if (data.output) {
-      appendLine(data.output, data.ok ? "output" : "error");
-    }
-    if (!data.ok) {
-      appendLine(`Command exited with code ${data.rc}`, "error");
-    }
-    setStatus("Ready");
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.output) {
+        appendLine(data.output, data.ok ? "output" : "error");
+      }
+      if (!data.ok) {
+        appendLine(`Command exited with code ${data.rc}`, "error");
+      }
+      setStatus("Ready");
+    })
+    .catch((err) => {
+      appendLine("Error contacting backend: " + err, "error");
+      setStatus("Error");
+    });
+}
+
+function saveCurrentFile() {
+  const payload = {
+    path: activeFile,
+    content: editor.value
+  };
+
+  fetch("/api/save", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload)
   })
-  .catch(err => {
-    appendLine("Error contacting backend: " + err, "error");
-    setStatus("Error");
-  });
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        setStatus("Saved");
+        appendLine(`Saved ${data.path}`, "output");
+      } else {
+        appendLine(`Save failed: ${data.error || "Unknown error"}`, "error");
+      }
+    })
+    .catch((err) => {
+      appendLine("Save error: " + err, "error");
+    });
+}
+
+function loadDefaultFile() {
+  fetch("/api/read", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ path: activeFile })
+  })
+    .then((res) => res.json())
+    .then((data) => {
+      if (data.ok) {
+        editor.value = data.content;
+      }
+    });
 }
 
 document.getElementById("runCommandBtn").addEventListener("click", () => {
@@ -83,30 +154,7 @@ document.getElementById("runCommandBtn").addEventListener("click", () => {
   }
 });
 
-document.getElementById("saveFileBtn").addEventListener("click", () => {
-  const payload = {
-    path: "app.py",
-    content: editor.value
-  };
-
-  fetch("/api/save", {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload)
-  })
-  .then(res => res.json())
-  .then(data => {
-    if (data.ok) {
-      setStatus("Saved");
-      appendLine(`Saved ${data.path}`, "output");
-    } else {
-      appendLine(`Save failed: ${data.error || "Unknown error"}`, "error");
-    }
-  })
-  .catch(err => {
-    appendLine("Save error: " + err, "error");
-  });
-});
+document.getElementById("saveFileBtn").addEventListener("click", saveCurrentFile);
 
 document.getElementById("clearTerminalBtn").addEventListener("click", () => {
   terminal.innerHTML = "";
@@ -136,5 +184,7 @@ commandInput.addEventListener("keydown", (event) => {
 });
 
 printIntro();
+setActiveFile(activeFile);
+loadDefaultFile();
 refreshFileList();
 commandInput.focus();

@@ -332,10 +332,19 @@ button, input, textarea {
   align-items: center;
   justify-content: space-between;
   gap: 8px;
+  cursor: pointer;
+}
+
+.file-item.active {
+  border-color: rgba(105, 215, 255, 0.4);
+  background: rgba(105, 215, 255, 0.08);
 }
 
 .file-name {
   font-size: 13px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .file-kind {

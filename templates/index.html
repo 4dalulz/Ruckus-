@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Kali-style Dashboard</title>
+  <title>Kali TUI Workspace</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
@@ -44,7 +44,7 @@
           <button class="action-btn" id="clearTerminalBtn">Clear</button>
         </div>
         <div class="toolbar-group">
-          <button class="action-btn">Project: my_web_app</button>
+          <button class="action-btn" id="statusLabel">Project: my_web_app</button>
         </div>
       </div>
 
@@ -103,7 +103,7 @@
       <section class="editor-panel">
         <div class="panel-header">
           <span>Editor</span>
-          <span>app.py</span>
+          <span id="activeFileLabel">app.py</span>
         </div>
         <textarea id="editor" class="editor">from flask import Flask
 
