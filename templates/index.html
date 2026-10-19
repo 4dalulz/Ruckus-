@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kali-style Dashboard</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand">
+        <div class="brand-mark">K</div>
+        <div class="brand-name">Kali TUI</div>
+      </div>
+
+      <nav class="nav">
+        <button class="nav-item active">Dashboard</button>
+        <button class="nav-item">Terminal</button>
+        <button class="nav-item">Workspace</button>
+        <button class="nav-item">Logs</button>
+      </nav>
+
+      <div class="status-box">
+        <div class="status-label">Session</div>
+        <div class="status-value online">Online</div>
+      </div>
+    </aside>
+
+    <main class="main-panel">
+      <header class="topbar">
+        <div class="traffic-lights">
+          <span class="dot red"></span>
+          <span class="dot yellow"></span>
+          <span class="dot green"></span>
+        </div>
+        <div class="window-title">workspace / web-terminal</div>
+      </header>
+
+      <div class="toolbar">
+        <div class="toolbar-group">
+          <button class="action-btn primary" id="runCommandBtn">Run</button>
+          <button class="action-btn" id="saveFileBtn">Save</button>
+          <button class="action-btn" id="clearTerminalBtn">Clear</button>
+        </div>
+        <div class="toolbar-group">
+          <button class="action-btn">Project: my_web_app</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <section class="terminal-panel">
+          <div class="panel-header">
+            <span>Terminal</span>
+            <span id="statusText">Ready</span>
+          </div>
+
+          <div id="terminal" class="terminal" aria-live="polite"></div>
+
+          <div class="terminal-input-row">
+            <span class="prompt">root@kali:~$</span>
+            <input
+              id="commandInput"
+              class="command-input"
+              type="text"
+              placeholder="Type a command..."
+              autocomplete="off"
+              spellcheck="false"
+            />
+          </div>
+        </section>
+
+        <aside class="side-panel">
+          <div class="panel-block">
+            <div class="block-title">System</div>
+            <div class="stats">
+              <div class="stat-box">
+                <div class="stat-label">CPU</div>
+                <div class="stat-value">8 cores</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">RAM</div>
+                <div class="stat-value">16 GB</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">ENV</div>
+                <div class="stat-value">Python</div>
+              </div>
+              <div class="stat-box">
+                <div class="stat-label">Shell</div>
+                <div class="stat-value">bash</div>
+              </div>
+            </div>
+          </div>
+
+          <div class="panel-block">
+            <div class="block-title">Workspace</div>
+            <div id="fileList" class="file-list"></div>
+          </div>
+        </aside>
+      </div>
+
+      <section class="editor-panel">
+        <div class="panel-header">
+          <span>Editor</span>
+          <span>app.py</span>
+        </div>
+        <textarea id="editor" class="editor">from flask import Flask
+
+app = Flask(__name__)
+
+@app.route("/")
+def home():
+    return "hello from flask"
+
+if __name__ == "__main__":
+    app.run(host="127.0.0.1", port=5000, debug=True)
+</textarea>
+      </section>
+    </main>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+</body>
+</html>
